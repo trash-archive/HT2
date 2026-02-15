@@ -69,4 +69,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
+    // Material Icons Extended
+    implementation("androidx.compose.material:material")
+    implementation("androidx.compose.material:material-icons-extended")
+
+    // Coil for Jetpack Compose
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

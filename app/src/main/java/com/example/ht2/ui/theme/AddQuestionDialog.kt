@@ -1,6 +1,5 @@
 package com.example.ht2.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,11 +14,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
+// FIXED: Added currentTheme parameter for dynamic colors
 @Composable
 fun AddQuestionDialog(
+    currentTheme: CategoryTheme,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
+    val maxCharacters = 140
     var questionText by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
 
@@ -66,18 +68,20 @@ fun AddQuestionDialog(
 
                 // Description
                 Text(
-                    text = "Write your own question to add to your collection. It will appear in the \"All\" and \"My Questions\" categories.",
+                    text = "Write your own question to add to your collection. Keep it short and meaningful so it looks great on a card.",
                     fontSize = 14.sp,
                     color = Color(0xFF666666),
                     lineHeight = 20.sp
                 )
 
-                // Text field
+                // FIXED: Text field with theme color
                 OutlinedTextField(
                     value = questionText,
                     onValueChange = {
-                        questionText = it
-                        showError = false
+                        if (it.length <= maxCharacters) {
+                            questionText = it
+                            showError = false
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -89,24 +93,35 @@ fun AddQuestionDialog(
                         )
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFB85C5C),
+                        focusedBorderColor = currentTheme.accentColor,  // DYNAMIC
                         unfocusedBorderColor = Color(0xFFDDDDDD),
                         focusedTextColor = Color(0xFF2D2D2D),
                         unfocusedTextColor = Color(0xFF2D2D2D),
-                        cursorColor = Color(0xFFB85C5C)
+                        cursorColor = currentTheme.accentColor  // DYNAMIC
                     ),
                     shape = RoundedCornerShape(16.dp),
                     isError = showError,
                     supportingText = if (showError) {
-                        { Text("Please enter a question", color = MaterialTheme.colorScheme.error) }
+                        {
+                            Text(
+                                text = if (questionText.isBlank())
+                                    "Please enter a question"
+                                else
+                                    "Question must be $maxCharacters characters or less",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                     } else null
                 )
 
-                // Character count
+                // Character Counter
                 Text(
-                    text = "${questionText.length} characters",
+                    text = "${questionText.length} / $maxCharacters",
                     fontSize = 12.sp,
-                    color = Color(0xFF999999),
+                    color = if (questionText.length >= maxCharacters)
+                        MaterialTheme.colorScheme.error
+                    else
+                        Color(0xFF999999),
                     modifier = Modifier.align(Alignment.End)
                 )
 
@@ -115,7 +130,7 @@ fun AddQuestionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Cancel button
+                    // Cancel
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
@@ -128,32 +143,38 @@ fun AddQuestionDialog(
                         )
                     ) {
                         Text(
-                            "Cancel",
+                            text = "Cancel",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
 
-                    // Save button
+                    // FIXED: Save button with theme color
                     Button(
                         onClick = {
-                            if (questionText.trim().isEmpty()) {
-                                showError = true
-                            } else {
-                                onSave(questionText.trim())
-                                onDismiss()
+                            when {
+                                questionText.trim().isEmpty() -> {
+                                    showError = true
+                                }
+                                questionText.length > maxCharacters -> {
+                                    showError = true
+                                }
+                                else -> {
+                                    onSave(questionText.trim())
+                                    onDismiss()
+                                }
                             }
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFB85C5C),
+                            containerColor = currentTheme.accentColor,  // DYNAMIC
                             contentColor = Color.White
                         )
                     ) {
                         Text(
-                            "Save",
+                            text = "Save",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(vertical = 8.dp)

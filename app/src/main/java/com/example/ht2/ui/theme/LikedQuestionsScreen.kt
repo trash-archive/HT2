@@ -1,5 +1,7 @@
 package com.example.ht2.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -21,19 +23,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ht2.data.Question
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ht2.data.Question
 import com.example.ht2.viewmodel.QuestionViewModel
 
 @Composable
 fun LikedQuestionsScreen(
     viewModel: QuestionViewModel = viewModel(),
+    currentTheme: CategoryTheme,
     onNavigateBack: () -> Unit
 ) {
-    // ✅ FIX: Observe the StateFlow to trigger recomposition
     val likedQuestionsSet by viewModel.likedQuestions.collectAsState()
 
-    // Derive the list from the observed state
     val likedQuestionsList = remember(likedQuestionsSet) {
         viewModel.getLikedQuestionsList()
     }
@@ -41,25 +42,15 @@ fun LikedQuestionsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFB85C5C),
-                        Color(0xFFA84848),
-                        Color(0xFF963D3D)
-                    )
-                )
-            )
+            .background(brush = Brush.verticalGradient(currentTheme.gradient))
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .padding(top = 32.dp),
+                    .padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
@@ -68,10 +59,7 @@ fun LikedQuestionsScreen(
                     color = Color.White.copy(alpha = 0.25f),
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -102,7 +90,6 @@ fun LikedQuestionsScreen(
 
             // Content
             if (likedQuestionsList.isEmpty()) {
-                // Empty state
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -130,7 +117,6 @@ fun LikedQuestionsScreen(
                                 )
                             }
                         }
-
                         Text(
                             text = "No liked questions yet",
                             fontSize = 20.sp,
@@ -138,7 +124,6 @@ fun LikedQuestionsScreen(
                             color = Color.White,
                             textAlign = TextAlign.Center
                         )
-
                         Text(
                             text = "Tap the heart icon on any card\nto save your favorite questions here",
                             fontSize = 15.sp,
@@ -150,7 +135,6 @@ fun LikedQuestionsScreen(
                     }
                 }
             } else {
-                // Grid of liked questions with proper animations
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(16.dp),
@@ -158,16 +142,33 @@ fun LikedQuestionsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(
-                        items = likedQuestionsList,
-                        key = { it.id }
-                    ) { question ->
-                        LikedQuestionCard(
-                            question = question,
-                            onUnlike = {
-                                viewModel.toggleLike(question.id)
-                            }
-                        )
+                    items(items = likedQuestionsList, key = { it.id }) { question ->
+                        var visible by remember { mutableStateOf(true) }
+
+                        AnimatedVisibility(
+                            visible = visible,
+                            enter = fadeIn(tween(300)) + scaleIn(
+                                initialScale = 0.85f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            ),
+                            exit = fadeOut(tween(250)) + scaleOut(
+                                targetScale = 0.75f,
+                                animationSpec = tween(250, easing = FastOutLinearInEasing)
+                            ) + shrinkVertically(
+                                animationSpec = tween(300, delayMillis = 200)
+                            )
+                        ) {
+                            LikedQuestionCard(
+                                question = question,
+                                onUnlike = {
+                                    visible = false
+                                    viewModel.toggleLike(question.id)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -180,31 +181,26 @@ fun LikedQuestionCard(
     question: Question,
     onUnlike: () -> Unit
 ) {
+    // Use the same category theme as History/Disliked cards
+    val theme = getCategoryTheme(question.category)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.75f),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFFFFFBF5),
-                            Color(0xFFFFF8F0)
-                        )
-                    )
-                )
+                // Category-coloured gradient — identical pattern to HistoryQuestionCard
+                .background(brush = Brush.verticalGradient(theme.cardGradient))
         ) {
-            // Category badge
+            // Category badge (top-left)
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = Color(0xFFB85C5C).copy(alpha = 0.12f),
+                color = theme.accentColor.copy(alpha = 0.12f),
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(12.dp)
@@ -212,50 +208,47 @@ fun LikedQuestionCard(
                 Text(
                     text = question.category,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    color = Color(0xFFB85C5C),
+                    color = theme.accentColor,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 10.sp,
                     letterSpacing = 0.3.sp
                 )
             }
 
-            // Unlike button
+            // Unlike / heart button (top-right) — uses accent colour from theme
             Surface(
                 onClick = onUnlike,
                 shape = CircleShape,
-                color = Color(0xFFFF6B9D).copy(alpha = 0.15f),
+                color = theme.accentColor.copy(alpha = 0.15f),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(12.dp)
                     .size(36.dp)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
                         imageVector = Icons.Filled.Favorite,
                         contentDescription = "Unlike",
-                        tint = Color(0xFFFF6B9D),
+                        tint = theme.accentColor,
                         modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            // Question text
+            // Question text — centred between badge and bottom indicator
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
-                    .padding(top = 32.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 52.dp, bottom = 48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = question.text,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        lineHeight = 20.sp,
+                        lineHeight = 19.sp,
                         letterSpacing = (-0.2).sp
                     ),
                     textAlign = TextAlign.Center,
@@ -263,6 +256,34 @@ fun LikedQuestionCard(
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            // "Liked" indicator (bottom-centre) — accent tinted, matches category
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = theme.accentColor.copy(alpha = 0.10f),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        tint = theme.accentColor,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        text = "Liked",
+                        color = theme.accentColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 10.sp
+                    )
+                }
             }
         }
     }
